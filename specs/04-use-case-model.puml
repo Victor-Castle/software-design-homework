@@ -1,0 +1,71 @@
+@startuml
+title 图书管理系统 · 用例图（Use Case Diagram）
+
+' ===== 参与者（Actors）=====
+actor Reader as R
+actor Student as S
+actor Teacher as T
+actor Librarian as L
+actor SystemAdmin as A
+
+' Reader 的泛化关系
+Reader <|-- Student
+Reader <|-- Teacher
+
+' ===== 用例（Use Cases）=====
+rectangle "读者自助" {
+  (注册账号) as UC01
+  (查询图书) as UC10
+  (预约图书) as UC06
+  (查询借阅信息) as UC05
+}
+
+rectangle "流通管理（管理员代理）" {
+  (办理借书) as UC03
+  (办理还书) as UC04
+  (验证借阅证) as VR
+  (检查借阅规则) as CR
+  (计算超期罚款) as UC10b
+}
+
+rectangle "系统后台维护（系统管理员）" {
+  (办理借阅证) as UC02
+  (添加图书标题) as UC07
+  (添加馆藏副本) as UC08
+  (维护规则) as UC16
+}
+
+' ===== 参与者-用例关联 =====
+R --> UC01
+A --> UC01
+
+R --> UC10
+L --> UC10
+A --> UC10
+
+R --> UC06
+L --> UC06
+
+R --> UC05
+L --> UC05
+
+L --> UC03
+L --> UC04
+
+A --> UC02
+A --> UC07
+A --> UC08
+A --> UC16
+
+' ===== 关系（include / extend）=====
+' 办理借书 include 验证借阅证 和 检查借阅规则
+UC03 ..> VR : <<include>>
+UC03 ..> CR : <<include>>
+
+' 办理还书 include 计算超期罚款
+UC04 ..> UC10b : <<include>>
+
+' 预约图书：当无可借副本时 extend 办理借书（无可借副本转向预约）
+UC06 ..> UC03 : <<extend>>
+
+@enduml

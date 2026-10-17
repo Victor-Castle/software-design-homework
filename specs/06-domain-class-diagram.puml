@@ -1,0 +1,104 @@
+@startuml
+title 图书管理系统 · 领域类图（Domain Class Diagram）
+
+skinparam class {
+  backgroundColor #fefefe
+  borderColor #555
+}
+
+' ============ 参与者 / 读者（泛化） ============
+abstract class Reader {
+  - readerId
+  - readerType: ReaderType
+  - accountId
+  + isQualifiedToBorrow(): boolean
+  + currentBorrowCount(): int
+  + hasOverdue(): boolean
+}
+class StudentReader {
+  - gradeLevel
+}
+class TeacherReader {
+  - department
+}
+Reader <|-- StudentReader : 泛化
+Reader <|-- TeacherReader : 泛化
+
+' ============ 借阅证 ============
+class BorrowCard {
+  - cardNo: String   {CARD+year+6seq}
+  - status: CardStatus
+  - issuedAt
+  + isValid(): boolean
+}
+Reader "1" *-- "0..1" BorrowCard : 一人一有效证\n(组合)
+
+' ============ 图书标题与副本（泛化） ============
+class Title {
+  - titleId
+  - isbn: String
+  - name, author, publisher, category
+  - isActive: boolean
+  + activeCopies(): int
+  + softDelete()
+}
+abstract class LibraryItem {
+  - itemId
+  - barcode: String
+  - itemType: ItemType
+  - location: String
+  - status: ItemStatus
+  + isAvailable(): boolean
+}
+class Book
+class Magazine
+class Thesis
+LibraryItem <|-- Book : 泛化
+LibraryItem <|-- Magazine : 泛化
+LibraryItem <|-- Thesis : 泛化
+Title "1" *-- "0..*" LibraryItem : 标题下多个副本\n(组合)
+
+' ============ 借阅记录 / 预约 / 罚款记录 ============
+class Loan {
+  - loanId
+  - borrowDate
+  - dueDate
+  - returnDate
+  - status: LoanStatus
+  - snapshotRuleVersion
+  + isOverdue(now): boolean
+}
+class Reservation {
+  - reservationId
+  - createdAt
+  - status: ReservationStatus   {pending/fulfilled/cancelled/expired}
+  + queuePosition(): int
+}
+class FineRecord {
+  - fineId
+  - amount: Money
+  - status: FineStatus   {unpaid/paid/waived}
+  + markPaid()
+  + waive()
+}
+Reader "1" o-- "0..*" Loan : 一对多\n(聚合)
+Reader "1" o-- "0..*" Reservation : 一对多\n(聚合)
+Title "1" o-- "0..*" Reservation : 标题级排队
+LibraryItem "1" o-- "0..*" Loan : 副本多次借出
+Loan "1" o-- "0..1" FineRecord : 超期产生罚款
+
+' ============ 策略类（无状态，独立于实体） ============
+class BorrowPolicy {
+  + maxBorrow(readerType): int
+  + loanPeriod(readerType, itemType): int
+  + canBorrow(reader, activeLoans): boolean
+}
+class FineRule {
+  + rate(itemType): Money
+  + calculate(overdueDays, itemType): Money
+}
+BorrowPolicy ..> Reader : 依赖(读取类型/上限)
+BorrowPolicy ..> Loan : 依赖(统计在借/超期)
+FineRule ..> LibraryItem : 依赖(按itemType取费率)
+
+@enduml

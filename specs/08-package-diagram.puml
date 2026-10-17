@@ -1,0 +1,85 @@
+@startuml
+title 分层架构包图（依赖单向向下，P-05 / 07-architecture.md §1）
+
+' ============ 顶层包 ============
+package "presentation (表现层)" as pres {
+  package "controllers (MVC Controller)" as ctrl {
+    [ReaderController]
+    [CardController]
+    [CatalogController]
+    [CirculationController]
+    [ReservationController]
+    [FineController]
+    [AdminController]
+  }
+  [RoleGuard 角色校验]
+}
+
+package "application (应用服务层)" as app {
+  package "reader" as a_reader   { [ReaderAppService] }
+  package "card" as a_card       { [CardAppService] }
+  package "catalog" as a_catalog { [CatalogAppService] }
+  package "circulation" as a_circ { [CirculationAppService] }
+  package "reservation" as a_res { [ReservationAppService] }
+  package "fine" as a_fine       { [FineAppService] }
+  package "admin" as a_admin     { [AdminAppService] }
+  [UnitOfWork 事务边界]
+}
+
+package "domain (领域层)" as dom {
+  package "entities (实体)" as ent {
+    [Reader / BorrowCard / Title / LibraryItem(Book,Magazine,Thesis)]
+    [Loan / Reservation / FineRecord / Account]
+  }
+  package "domain services (Policy)" as pol {
+    [BorrowPolicy]
+    [FineRule]
+    [ReservationPolicy]
+    [CardPolicy]
+  }
+  package "repository interfaces (仓储接口)" as repoI {
+    [ReaderRepository]
+    [LoanRepository]
+    [TitleRepository]
+    [ReservationRepository]
+    [FineRepository]
+  }
+}
+
+package "infrastructure (基础设施层)" as infra {
+  package "repository impl (仓储实现)" as repoImpl {
+    [ReaderRepositoryImpl]
+    [LoanRepositoryImpl]
+    [TitleRepositoryImpl]
+    [ReservationRepositoryImpl]
+    [FineRepositoryImpl]
+  }
+  package "db config (数据库配置)" as db {
+    [ORM Models (SQLAlchemy)]
+    [DB Connection (SQLite)]
+  }
+}
+
+package "dto (数据传输对象)" as dto {
+  [Request / Response DTOs]
+}
+
+package "test (自动化测试)" as test {
+  [pytest + TestClient 测试集]
+}
+
+' ============ 依赖方向（单向向下） ============
+pres --> app        : 表现层依赖应用层
+app  --> dom        : 应用层依赖领域层(含仓储接口)
+infra ..|> dom      : 基础设施实现领域层定义的仓储接口
+infra ..> dom       : 基础设施依赖领域实体/接口
+app  ..> dto        : 应用层装配 DTO
+pres ..> dto        : 表现层装配请求/响应 DTO
+test ..> app
+test ..> dom
+test ..> infra
+
+' 严禁：表现层 Controller 不得直接依赖基础设施层的 Repository
+' （即不得出现 pres --> infra 或 ctrl --> repoImpl）
+
+@enduml
